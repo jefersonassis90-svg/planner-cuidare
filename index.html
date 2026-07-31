@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Planner Cuidare</title>
+  <title>Planner Home Care</title>
   <style>
     :root{
       --bg:#f3f7fc;
@@ -273,10 +273,15 @@
       .app{display:block}.main{padding:0}.card{box-shadow:none}
       body{background:white}
     }
+
+.auth-screen{min-height:100vh;display:grid;place-items:center;padding:24px;background:linear-gradient(135deg,#eff6ff,#dbeafe)}body.dark .auth-screen{background:linear-gradient(135deg,#0f172a,#172554)}.auth-card{width:min(430px,100%);background:var(--panel);border:1px solid var(--border);border-radius:24px;padding:28px;box-shadow:var(--shadow)}.auth-logo{width:58px;height:58px;border-radius:18px;display:grid;place-items:center;margin-bottom:18px;background:linear-gradient(135deg,#2563eb,#60a5fa);color:#fff;font-size:28px}.auth-card h1{margin:0 0 6px}.auth-card p{color:var(--muted);margin:0 0 22px}.auth-form{display:grid;gap:14px}.auth-message{min-height:20px;font-size:13px;color:var(--danger)}.sync-state{font-size:12px;color:var(--muted);align-self:center}
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
 </head>
 <body>
-<div class="app">
+<section id="authScreen" class="auth-screen"><div class="auth-card"><div class="auth-logo">✚</div><h1>Cuidare - Boa Viagem</h1><p>Entre para acessar e sincronizar suas tarefas.</p><form id="loginForm" class="auth-form"><div class="form-group"><label>E-mail</label><input class="field" id="loginEmail" type="email" required></div><div class="form-group"><label>Senha</label><input class="field" id="loginPassword" type="password" required></div><button class="btn primary" type="submit">Entrar</button><div id="authMessage" class="auth-message"></div></form></div></section>
+<div class="app" id="appRoot" style="display:none">
   <aside class="sidebar">
     <div class="brand">
       <div class="brand-badge">✚</div>
@@ -287,14 +292,7 @@
       <button data-view="week">Semana</button>
       <button data-view="month">Mês</button>
     </nav>
-    <div class="sidebar-footer">
-      <button class="btn" id="backupBtn">Exportar backup</button>
-      <label class="btn" style="text-align:center;cursor:pointer">
-        Importar backup
-        <input id="importInput" type="file" accept=".json" hidden>
-      </label>
-    </div>
-  </aside>
+    </aside>
 
   <main class="main">
     <div class="topbar">
@@ -306,7 +304,7 @@
         <button class="btn" id="prevBtn">←</button>
         <button class="btn" id="todayBtn">Hoje</button>
         <button class="btn" id="nextBtn">→</button>
-        <button class="btn" id="themeBtn">Modo escuro</button>
+        <span class="sync-state" id="syncState">Conectando...</span><button class="btn" id="themeBtn">Modo escuro</button><button class="btn" id="logoutBtn">Sair</button>
         <button class="btn primary" id="newTaskBtn">+ Nova tarefa</button>
       </div>
     </div>
@@ -431,279 +429,6 @@
   </div>
 </div>
 
-<script>
-const categories = [
-  "Pacientes","Escalas","Profissionais","Documentação","Financeiro",
-  "Convênios","Contratos","Atendimento às famílias","Recursos Humanos","Administrativo"
-];
-
-let tasks = JSON.parse(localStorage.getItem("homecareTasks") || "[]");
-let currentDate = new Date();
-let currentView = "today";
-
-const $ = s => document.querySelector(s);
-const $$ = s => document.querySelectorAll(s);
-const pad = n => String(n).padStart(2,"0");
-const dateKey = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-const parseDate = s => {
-  const [y,m,d] = s.split("-").map(Number);
-  return new Date(y,m-1,d);
-};
-const formatDate = d => d.toLocaleDateString("pt-BR",{weekday:"long",day:"2-digit",month:"long"});
-const save = () => localStorage.setItem("homecareTasks", JSON.stringify(tasks));
-
-function fillCategories(){
-  $("#category").innerHTML = categories.map(c=>`<option>${c}</option>`).join("");
-  $("#categoryFilter").innerHTML = `<option value="">Todas as categorias</option>` + categories.map(c=>`<option>${c}</option>`).join("");
-}
-fillCategories();
-
-function filteredTasks(){
-  const q = $("#searchInput").value.trim().toLowerCase();
-  const cat = $("#categoryFilter").value;
-  const status = $("#statusFilter").value;
-  const priority = $("#priorityFilter").value;
-  return tasks.filter(t=>{
-    const hay = [t.title,t.patient,t.professional,t.owner,t.notes].join(" ").toLowerCase();
-    return (!q || hay.includes(q)) &&
-           (!cat || t.category===cat) &&
-           (!status || t.status===status) &&
-           (!priority || t.priority===priority);
-  });
-}
-
-function stats(){
-  const today = dateKey(new Date());
-  $("#pendingCount").textContent = tasks.filter(t=>t.status==="Pendente").length;
-  $("#progressCount").textContent = tasks.filter(t=>t.status==="Em andamento").length;
-  $("#waitingCount").textContent = tasks.filter(t=>t.status==="Aguardando retorno").length;
-  $("#lateCount").textContent = tasks.filter(t=>t.date<today && !["Concluída","Cancelada"].includes(t.status)).length;
-}
-
-function taskHTML(t){
-  const done = t.status==="Concluída";
-  const info = [
-    t.time ? `🕒 ${t.time}` : "",
-    t.category ? `📁 ${t.category}` : "",
-    t.patient ? `👤 ${t.patient}` : "",
-    t.professional ? `🩺 ${t.professional}` : "",
-    t.status ? `• ${t.status}` : ""
-  ].filter(Boolean).join(" ");
-  return `<div class="task ${t.priority} ${done?"done":""}">
-    <input type="checkbox" ${done?"checked":""} onchange="toggleTask('${t.id}')">
-    <div>
-      <div class="task-title">${escapeHTML(t.title)}</div>
-      <div class="task-meta">${escapeHTML(info)}</div>
-      ${t.notes ? `<div style="margin-top:8px;font-size:13px">${escapeHTML(t.notes)}</div>`:""}
-    </div>
-    <div class="task-actions">
-      <button class="icon-btn" onclick="editTask('${t.id}')">✎</button>
-    </div>
-  </div>`;
-}
-
-function renderToday(){
-  const key = dateKey(currentDate);
-  const list = filteredTasks().filter(t=>t.date===key).sort((a,b)=>(a.time||"99:99").localeCompare(b.time||"99:99"));
-  $("#todayDateLabel").textContent = formatDate(currentDate);
-  $("#todayTasks").innerHTML = list.length ? list.map(taskHTML).join("") : `<div class="empty">Nenhuma tarefa para este dia.</div>`;
-  const completed = list.filter(t=>t.status==="Concluída").length;
-  const pct = list.length ? Math.round(completed/list.length*100) : 0;
-  $("#dailyProgress").style.width = pct+"%";
-  $("#dailyProgressText").textContent = `${completed} de ${list.length} tarefa(s) concluída(s)`;
-}
-
-function startOfWeek(d){
-  const x = new Date(d);
-  const day = x.getDay();
-  const diff = day===0 ? -6 : 1-day;
-  x.setDate(x.getDate()+diff);
-  x.setHours(0,0,0,0);
-  return x;
-}
-
-function renderWeek(){
-  const start = startOfWeek(currentDate);
-  const names = ["Segunda","Terça","Quarta","Quinta","Sexta","Sábado","Domingo"];
-  let html = "";
-  for(let i=0;i<7;i++){
-    const d = new Date(start); d.setDate(start.getDate()+i);
-    const key = dateKey(d);
-    const list = filteredTasks().filter(t=>t.date===key).sort((a,b)=>(a.time||"99:99").localeCompare(b.time||"99:99"));
-    html += `<div class="day-col ${key===dateKey(new Date())?"today":""}">
-      <div class="day-head">${names[i]}<small>${d.toLocaleDateString("pt-BR")}</small></div>
-      ${list.length ? list.map(t=>`<div class="mini-task ${t.priority}" onclick="editTask('${t.id}')">
-        <strong>${escapeHTML(t.title)}</strong><br><span>${t.time||"Sem horário"} · ${escapeHTML(t.category)}</span>
-      </div>`).join("") : `<div class="empty" style="padding:18px 6px">Sem tarefas</div>`}
-    </div>`;
-  }
-  $("#weekGrid").innerHTML = html;
-}
-
-function renderMonth(){
-  const y = currentDate.getFullYear(), m = currentDate.getMonth();
-  const first = new Date(y,m,1);
-  const start = startOfWeek(first);
-  const heads = ["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"].map(x=>`<div class="month-head">${x}</div>`).join("");
-  let cells = "";
-  for(let i=0;i<42;i++){
-    const d = new Date(start); d.setDate(start.getDate()+i);
-    const key = dateKey(d);
-    const list = filteredTasks().filter(t=>t.date===key).slice(0,3);
-    cells += `<div class="month-day ${d.getMonth()!==m?"muted":""} ${key===dateKey(new Date())?"today":""}">
-      <div class="month-number">${d.getDate()}</div>
-      ${list.map(t=>`<div class="month-item" onclick="editTask('${t.id}')">${escapeHTML(t.title)}</div>`).join("")}
-      ${filteredTasks().filter(t=>t.date===key).length>3?`<small>+ mais</small>`:""}
-    </div>`;
-  }
-  $("#monthGrid").innerHTML = heads + cells;
-}
-
-function render(){
-  stats();
-  renderToday();
-  renderWeek();
-  renderMonth();
-  const labels = {
-    today:["Visão de hoje",formatDate(currentDate)],
-    week:["Visão semanal",`${startOfWeek(currentDate).toLocaleDateString("pt-BR")} a ${(()=>{let e=startOfWeek(currentDate);e.setDate(e.getDate()+6);return e.toLocaleDateString("pt-BR")})()}`],
-    month:["Visão mensal",currentDate.toLocaleDateString("pt-BR",{month:"long",year:"numeric"})]
-  };
-  $("#pageTitle").textContent = labels[currentView][0];
-  $("#pageSubtitle").textContent = labels[currentView][1];
-}
-
-function setView(v){
-  currentView=v;
-  $$(".view").forEach(x=>x.classList.remove("active"));
-  $("#"+v+"View").classList.add("active");
-  $$(".nav button").forEach(x=>x.classList.toggle("active",x.dataset.view===v));
-  render();
-}
-
-function openModal(task=null){
-  $("#taskModal").classList.add("open");
-  $("#modalTitle").textContent = task ? "Editar tarefa" : "Nova tarefa";
-  $("#deleteBtn").style.display = task ? "inline-block" : "none";
-  $("#taskId").value = task?.id || "";
-  $("#title").value = task?.title || "";
-  $("#date").value = task?.date || dateKey(currentDate);
-  $("#time").value = task?.time || "";
-  $("#category").value = task?.category || categories[0];
-  $("#priority").value = task?.priority || "medium";
-  $("#status").value = task?.status || "Pendente";
-  $("#owner").value = task?.owner || "";
-  $("#patient").value = task?.patient || "";
-  $("#professional").value = task?.professional || "";
-  $("#phone").value = task?.phone || "";
-  $("#notes").value = task?.notes || "";
-  setTimeout(()=>$("#title").focus(),50);
-}
-function closeModal(){ $("#taskModal").classList.remove("open"); }
-
-function editTask(id){ openModal(tasks.find(t=>t.id===id)); }
-function toggleTask(id){
-  const t=tasks.find(t=>t.id===id);
-  t.status = t.status==="Concluída" ? "Pendente" : "Concluída";
-  save(); render();
-}
-function deleteTask(){
-  const id=$("#taskId").value;
-  if(id && confirm("Excluir esta tarefa?")){
-    tasks=tasks.filter(t=>t.id!==id); save(); closeModal(); render();
-  }
-}
-function escapeHTML(str=""){
-  return str.replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
-}
-
-$("#taskForm").addEventListener("submit",e=>{
-  e.preventDefault();
-  const id=$("#taskId").value || String(Date.now());
-  const task={
-    id,
-    title:$("#title").value.trim(),
-    date:$("#date").value,
-    time:$("#time").value,
-    category:$("#category").value,
-    priority:$("#priority").value,
-    status:$("#status").value,
-    owner:$("#owner").value.trim(),
-    patient:$("#patient").value.trim(),
-    professional:$("#professional").value.trim(),
-    phone:$("#phone").value.trim(),
-    notes:$("#notes").value.trim()
-  };
-  const ix=tasks.findIndex(t=>t.id===id);
-  if(ix>=0) tasks[ix]=task; else tasks.push(task);
-  save(); closeModal(); render();
-});
-
-$$(".nav button").forEach(b=>b.addEventListener("click",()=>setView(b.dataset.view)));
-["searchInput","categoryFilter","statusFilter","priorityFilter"].forEach(id=>$("#"+id).addEventListener("input",render));
-$("#newTaskBtn").onclick=()=>openModal();
-$("#closeModal").onclick=closeModal;
-$("#cancelBtn").onclick=closeModal;
-$("#deleteBtn").onclick=deleteTask;
-$("#taskModal").addEventListener("click",e=>{if(e.target.id==="taskModal")closeModal()});
-$("#printBtn").onclick=()=>window.print();
-$("#todayBtn").onclick=()=>{currentDate=new Date();render()};
-$("#prevBtn").onclick=()=>{
-  if(currentView==="today") currentDate.setDate(currentDate.getDate()-1);
-  if(currentView==="week") currentDate.setDate(currentDate.getDate()-7);
-  if(currentView==="month") currentDate.setMonth(currentDate.getMonth()-1);
-  render();
-};
-$("#nextBtn").onclick=()=>{
-  if(currentView==="today") currentDate.setDate(currentDate.getDate()+1);
-  if(currentView==="week") currentDate.setDate(currentDate.getDate()+7);
-  if(currentView==="month") currentDate.setMonth(currentDate.getMonth()+1);
-  render();
-};
-$("#themeBtn").onclick=()=>{
-  document.body.classList.toggle("dark");
-  localStorage.setItem("homecareTheme",document.body.classList.contains("dark")?"dark":"light");
-  $("#themeBtn").textContent=document.body.classList.contains("dark")?"Modo claro":"Modo escuro";
-};
-if(localStorage.getItem("homecareTheme")==="dark"){
-  document.body.classList.add("dark");
-  $("#themeBtn").textContent="Modo claro";
-}
-
-$("#backupBtn").onclick=()=>{
-  const blob=new Blob([JSON.stringify(tasks,null,2)],{type:"application/json"});
-  const a=document.createElement("a");
-  a.href=URL.createObjectURL(blob);
-  a.download="backup_planner_homecare.json";
-  a.click();
-  URL.revokeObjectURL(a.href);
-};
-$("#importInput").addEventListener("change",e=>{
-  const file=e.target.files[0]; if(!file)return;
-  const reader=new FileReader();
-  reader.onload=()=>{
-    try{
-      const data=JSON.parse(reader.result);
-      if(!Array.isArray(data)) throw new Error();
-      tasks=data; save(); render(); alert("Backup importado com sucesso.");
-    }catch{ alert("Arquivo de backup inválido."); }
-  };
-  reader.readAsText(file);
-});
-
-// tarefas de exemplo somente no primeiro uso
-if(!localStorage.getItem("homecareInitialized")){
-  const now = new Date();
-  const tomorrow = new Date(now); tomorrow.setDate(now.getDate()+1);
-  tasks = [
-    {id:"1",title:"Confirmar escala do plantão noturno",date:dateKey(now),time:"09:00",category:"Escalas",priority:"high",status:"Pendente",owner:"",patient:"Paciente 014",professional:"",phone:"",notes:"Confirmar disponibilidade dos profissionais."},
-    {id:"2",title:"Solicitar documento pendente",date:dateKey(now),time:"11:00",category:"Documentação",priority:"medium",status:"Aguardando retorno",owner:"",patient:"",professional:"Técnico de enfermagem",phone:"",notes:""},
-    {id:"3",title:"Revisar fechamento de pagamentos",date:dateKey(tomorrow),time:"14:00",category:"Financeiro",priority:"medium",status:"Em andamento",owner:"",patient:"",professional:"",phone:"",notes:""}
-  ];
-  save();
-  localStorage.setItem("homecareInitialized","1");
-}
-render();
-</script>
+<script src="app.js"></script>
 </body>
 </html>
