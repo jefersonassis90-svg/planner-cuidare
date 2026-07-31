@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Planner Home Care</title>
+  <style>
+    :root{
+      --bg:#f3f7fc;
+      --panel:#ffffff;
+      --text:#1f2f4d;
+      --muted:#6b7c93;
+      --primary:#2563eb;
+      --primary-2:#dbeafe;
+      --accent:#d8b98a;
+      --danger:#b95555;
+      --warning:#d79a3b;
+      --ok:#4b8a69;
+      --border:#d6e4ff;
+      --shadow:0 12px 30px rgba(36,60,54,.08);
+      --radius:18px;
+    }
+    body.dark{
+      --bg:#0f172a;
+      --panel:#1e293b;
+      --text:#f1f5f9;
+      --muted:#94a3b8;
+      --primary:#60a5fa;
+      --primary-2:#1e3a8a;
+      --accent:#d5b888;
+      --danger:#d57979;
+      --warning:#e2ad5d;
+      --ok:#76b58e;
+      --border:#334155;
+      --shadow:0 12px 30px rgba(0,0,0,.22);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:Inter,Segoe UI,Arial,sans-serif;
+      background:var(--bg);
+      color:var(--text);
+    }
+    button,input,select,textarea{font:inherit}
+    .app{
+      display:grid;
+      grid-template-columns:250px 1fr;
+      min-height:100vh;
+    }
+    .sidebar{
+      background:var(--panel);
+      border-right:1px solid var(--border);
+      padding:24px 18px;
+      position:sticky;
+      top:0;
+      height:100vh;
+    }
+    .brand{
+      display:flex;
+      gap:12px;
+      align-items:center;
+      margin-bottom:28px;
+    }
+    .brand-badge{
+      width:46px;height:46px;border-radius:14px;
+      background:linear-gradient(135deg,var(--primary),#60a5fa);
+      display:grid;place-items:center;color:white;font-size:22px;
+      box-shadow:var(--shadow);
+    }
+    .brand h1{font-size:18px;margin:0}
+    .brand small{color:var(--muted)}
+    .nav{display:flex;flex-direction:column;gap:8px}
+    .nav button{
+      width:100%;
+      border:0;
+      background:transparent;
+      color:var(--text);
+      padding:12px 14px;
+      border-radius:12px;
+      text-align:left;
+      cursor:pointer;
+    }
+    .nav button.active,.nav button:hover{background:var(--primary-2);color:var(--primary)}
+    .sidebar-footer{
+      position:absolute;left:18px;right:18px;bottom:20px;
+      display:grid;gap:8px;
+    }
+    .main{padding:28px}
+    .topbar{
+      display:flex;justify-content:space-between;gap:16px;align-items:center;
+      margin-bottom:22px;
+    }
+    .topbar h2{margin:0;font-size:28px}
+    .topbar p{margin:5px 0 0;color:var(--muted)}
+    .actions{display:flex;gap:10px;flex-wrap:wrap}
+    .btn{
+      border:1px solid var(--border);
+      background:var(--panel);
+      color:var(--text);
+      padding:10px 14px;
+      border-radius:12px;
+      cursor:pointer;
+    }
+    .btn.primary{background:var(--primary);color:white;border-color:var(--primary)}
+    .btn.danger{color:var(--danger)}
+    .cards{
+      display:grid;
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:14px;
+      margin-bottom:18px;
+    }
+    .card{
+      background:var(--panel);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      padding:18px;
+      box-shadow:var(--shadow);
+    }
+    .card .label{color:var(--muted);font-size:13px}
+    .card .value{font-size:28px;font-weight:700;margin-top:6px}
+    .filters{
+      display:grid;
+      grid-template-columns:2fr 1fr 1fr 1fr auto;
+      gap:10px;
+      margin-bottom:18px;
+    }
+    .field, .filters input, .filters select{
+      width:100%;
+      padding:11px 12px;
+      border-radius:12px;
+      border:1px solid var(--border);
+      background:var(--panel);
+      color:var(--text);
+    }
+    .view{display:none}
+    .view.active{display:block}
+    .today-grid{
+      display:grid;
+      grid-template-columns:1.4fr .8fr;
+      gap:16px;
+    }
+    .section-title{
+      display:flex;justify-content:space-between;align-items:center;
+      margin-bottom:12px;
+    }
+    .section-title h3{margin:0}
+    .task-list{display:grid;gap:10px}
+    .task{
+      background:var(--panel);
+      border:1px solid var(--border);
+      border-left:5px solid var(--primary);
+      border-radius:14px;
+      padding:14px;
+      display:grid;
+      grid-template-columns:auto 1fr auto;
+      gap:12px;
+      align-items:start;
+    }
+    .task.high{border-left-color:var(--danger)}
+    .task.medium{border-left-color:var(--warning)}
+    .task.low{border-left-color:var(--ok)}
+    .task.done{opacity:.62}
+    .task.done .task-title{text-decoration:line-through}
+    .task-title{font-weight:700}
+    .task-meta{color:var(--muted);font-size:13px;margin-top:5px;display:flex;gap:10px;flex-wrap:wrap}
+    .tag{
+      display:inline-flex;padding:4px 8px;border-radius:999px;
+      background:var(--primary-2);color:var(--primary);font-size:12px;
+    }
+    .task-actions{display:flex;gap:6px}
+    .icon-btn{
+      border:0;background:transparent;cursor:pointer;color:var(--muted);
+      padding:5px;border-radius:8px;
+    }
+    .icon-btn:hover{background:var(--primary-2);color:var(--primary)}
+    .week{
+      display:grid;
+      grid-template-columns:repeat(7,minmax(170px,1fr));
+      gap:12px;
+      overflow:auto;
+      padding-bottom:8px;
+    }
+    .day-col{
+      background:var(--panel);border:1px solid var(--border);
+      border-radius:16px;min-height:420px;padding:12px;
+    }
+    .day-col.today{outline:2px solid var(--primary)}
+    .day-head{font-weight:700;margin-bottom:10px}
+    .day-head small{display:block;color:var(--muted);font-weight:400;margin-top:2px}
+    .mini-task{
+      border:1px solid var(--border);border-left:4px solid var(--primary);
+      border-radius:10px;padding:9px;margin-bottom:8px;background:var(--bg);
+      cursor:pointer;font-size:13px;
+    }
+    .mini-task.high{border-left-color:var(--danger)}
+    .mini-task.medium{border-left-color:var(--warning)}
+    .mini-task.low{border-left-color:var(--ok)}
+    .month{
+      display:grid;
+      grid-template-columns:repeat(7,1fr);
+      gap:8px;
+    }
+    .month-head{
+      text-align:center;color:var(--muted);font-size:13px;padding:8px;
+    }
+    .month-day{
+      min-height:120px;background:var(--panel);border:1px solid var(--border);
+      border-radius:14px;padding:9px;overflow:hidden;
+    }
+    .month-day.muted{opacity:.45}
+    .month-day.today{outline:2px solid var(--primary)}
+    .month-number{font-weight:700;margin-bottom:6px}
+    .month-item{
+      font-size:11px;padding:4px 6px;border-radius:7px;
+      background:var(--primary-2);margin-bottom:4px;
+      overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+      cursor:pointer;
+    }
+    .empty{
+      color:var(--muted);text-align:center;padding:34px 10px;
+      border:1px dashed var(--border);border-radius:14px;
+    }
+    .progress{
+      height:10px;border-radius:999px;background:var(--primary-2);overflow:hidden;
+    }
+    .progress > span{display:block;height:100%;background:var(--primary)}
+    .modal{
+      position:fixed;inset:0;background:rgba(0,0,0,.42);
+      display:none;align-items:center;justify-content:center;padding:20px;z-index:20;
+    }
+    .modal.open{display:flex}
+    .modal-card{
+      width:min(720px,100%);max-height:90vh;overflow:auto;
+      background:var(--panel);border-radius:20px;padding:22px;
+      box-shadow:0 30px 80px rgba(0,0,0,.3);
+    }
+    .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+    .modal-header h3{margin:0}
+    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .form-group{display:grid;gap:6px}
+    .form-group.full{grid-column:1/-1}
+    label{font-size:13px;color:var(--muted)}
+    textarea{min-height:90px;resize:vertical}
+    .modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
+    .note{
+      background:var(--primary-2);
+      border:1px solid var(--border);
+      color:var(--text);
+      border-radius:14px;padding:14px;font-size:13px;
+    }
+    @media(max-width:1000px){
+      .app{grid-template-columns:1fr}
+      .sidebar{height:auto;position:static;border-right:0;border-bottom:1px solid var(--border)}
+      .nav{flex-direction:row;overflow:auto}
+      .nav button{min-width:max-content}
+      .sidebar-footer{position:static;margin-top:14px;grid-template-columns:1fr 1fr}
+      .cards{grid-template-columns:repeat(2,1fr)}
+      .today-grid{grid-template-columns:1fr}
+      .filters{grid-template-columns:1fr 1fr}
+    }
+    @media(max-width:640px){
+      .main{padding:16px}
+      .topbar{align-items:flex-start;flex-direction:column}
+      .cards{grid-template-columns:1fr 1fr}
+      .filters{grid-template-columns:1fr}
+      .form-grid{grid-template-columns:1fr}
+      .form-group.full{grid-column:auto}
+      .month-day{min-height:90px;padding:6px}
+      .month-item{display:none}
+    }
+    @media print{
+      .sidebar,.actions,.filters,.icon-btn,.btn{display:none!important}
+      .app{display:block}.main{padding:0}.card{box-shadow:none}
+      body{background:white}
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-badge">✚</div>
+      <div><h1>Cuidare - Boa Viagem</h1><small>Organização administrativa</small></div>
+    </div>
+    <nav class="nav">
+      <button class="active" data-view="today">Hoje</button>
+      <button data-view="week">Semana</button>
+      <button data-view="month">Mês</button>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="btn" id="backupBtn">Exportar backup</button>
+      <label class="btn" style="text-align:center;cursor:pointer">
+        Importar backup
+        <input id="importInput" type="file" accept=".json" hidden>
+      </label>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div>
+        <h2 id="pageTitle">Visão de hoje</h2>
+        <p id="pageSubtitle"></p>
+      </div>
+      <div class="actions">
+        <button class="btn" id="prevBtn">←</button>
+        <button class="btn" id="todayBtn">Hoje</button>
+        <button class="btn" id="nextBtn">→</button>
+        <button class="btn" id="themeBtn">Modo escuro</button>
+        <button class="btn primary" id="newTaskBtn">+ Nova tarefa</button>
+      </div>
+    </div>
+
+    <section class="cards">
+      <div class="card"><div class="label">Pendentes</div><div class="value" id="pendingCount">0</div></div>
+      <div class="card"><div class="label">Em andamento</div><div class="value" id="progressCount">0</div></div>
+      <div class="card"><div class="label">Aguardando retorno</div><div class="value" id="waitingCount">0</div></div>
+      <div class="card"><div class="label">Atrasadas</div><div class="value" id="lateCount">0</div></div>
+    </section>
+
+    <section class="filters">
+      <input id="searchInput" placeholder="Buscar tarefa, paciente, profissional..." />
+      <select id="categoryFilter"><option value="">Todas as categorias</option></select>
+      <select id="statusFilter">
+        <option value="">Todos os status</option>
+        <option>Pendente</option><option>Em andamento</option>
+        <option>Aguardando retorno</option><option>Concluída</option><option>Cancelada</option>
+      </select>
+      <select id="priorityFilter">
+        <option value="">Todas as prioridades</option>
+        <option value="high">Alta</option><option value="medium">Média</option><option value="low">Baixa</option>
+      </select>
+      <button class="btn" id="printBtn">Imprimir</button>
+    </section>
+
+    <section id="todayView" class="view active">
+      <div class="today-grid">
+        <div class="card">
+          <div class="section-title"><h3>Tarefas do dia</h3><span id="todayDateLabel"></span></div>
+          <div id="todayTasks" class="task-list"></div>
+        </div>
+        <div class="card">
+          <div class="section-title"><h3>Resumo do dia</h3></div>
+          <p class="label">Progresso</p>
+          <div class="progress"><span id="dailyProgress" style="width:0%"></span></div>
+          <p id="dailyProgressText" style="color:var(--muted);font-size:13px"></p>
+          <div class="note">
+            Dica: evite inserir dados clínicos sensíveis. Use códigos ou iniciais para identificar pacientes.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="weekView" class="view">
+      <div id="weekGrid" class="week"></div>
+    </section>
+
+    <section id="monthView" class="view">
+      <div id="monthGrid" class="month"></div>
+    </section>
+  </main>
+</div>
+
+<div class="modal" id="taskModal">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3 id="modalTitle">Nova tarefa</h3>
+      <button class="icon-btn" id="closeModal">✕</button>
+    </div>
+    <form id="taskForm">
+      <input type="hidden" id="taskId">
+      <div class="form-grid">
+        <div class="form-group full">
+          <label>Título da tarefa</label>
+          <input class="field" id="title" required placeholder="Ex.: Confirmar escala do plantão">
+        </div>
+        <div class="form-group">
+          <label>Data</label>
+          <input class="field" id="date" type="date" required>
+        </div>
+        <div class="form-group">
+          <label>Horário</label>
+          <input class="field" id="time" type="time">
+        </div>
+        <div class="form-group">
+          <label>Categoria</label>
+          <select class="field" id="category"></select>
+        </div>
+        <div class="form-group">
+          <label>Prioridade</label>
+          <select class="field" id="priority">
+            <option value="low">Baixa</option>
+            <option value="medium" selected>Média</option>
+            <option value="high">Alta</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Status</label>
+          <select class="field" id="status">
+            <option>Pendente</option><option>Em andamento</option>
+            <option>Aguardando retorno</option><option>Concluída</option><option>Cancelada</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Responsável</label>
+          <input class="field" id="owner" placeholder="Nome do responsável">
+        </div>
+        <div class="form-group">
+          <label>Paciente / código</label>
+          <input class="field" id="patient" placeholder="Ex.: Paciente 014">
+        </div>
+        <div class="form-group">
+          <label>Profissional</label>
+          <input class="field" id="professional" placeholder="Cuidador, técnico, enfermeiro...">
+        </div>
+        <div class="form-group">
+          <label>Telefone</label>
+          <input class="field" id="phone" placeholder="(81) 99999-9999">
+        </div>
+        <div class="form-group full">
+          <label>Observações</label>
+          <textarea class="field" id="notes" placeholder="Informações administrativas da tarefa"></textarea>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn danger" id="deleteBtn" style="display:none">Excluir</button>
+        <button type="button" class="btn" id="cancelBtn">Cancelar</button>
+        <button type="submit" class="btn primary">Salvar tarefa</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+const categories = [
+  "Pacientes","Escalas","Profissionais","Documentação","Financeiro",
+  "Convênios","Contratos","Atendimento às famílias","Recursos Humanos","Administrativo"
+];
+
+let tasks = JSON.parse(localStorage.getItem("homecareTasks") || "[]");
+let currentDate = new Date();
+let currentView = "today";
+
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+const pad = n => String(n).padStart(2,"0");
+const dateKey = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const parseDate = s => {
+  const [y,m,d] = s.split("-").map(Number);
+  return new Date(y,m-1,d);
+};
+const formatDate = d => d.toLocaleDateString("pt-BR",{weekday:"long",day:"2-digit",month:"long"});
+const save = () => localStorage.setItem("homecareTasks", JSON.stringify(tasks));
+
+function fillCategories(){
+  $("#category").innerHTML = categories.map(c=>`<option>${c}</option>`).join("");
+  $("#categoryFilter").innerHTML = `<option value="">Todas as categorias</option>` + categories.map(c=>`<option>${c}</option>`).join("");
+}
+fillCategories();
+
+function filteredTasks(){
+  const q = $("#searchInput").value.trim().toLowerCase();
+  const cat = $("#categoryFilter").value;
+  const status = $("#statusFilter").value;
+  const priority = $("#priorityFilter").value;
+  return tasks.filter(t=>{
+    const hay = [t.title,t.patient,t.professional,t.owner,t.notes].join(" ").toLowerCase();
+    return (!q || hay.includes(q)) &&
+           (!cat || t.category===cat) &&
+           (!status || t.status===status) &&
+           (!priority || t.priority===priority);
+  });
+}
+
+function stats(){
+  const today = dateKey(new Date());
+  $("#pendingCount").textContent = tasks.filter(t=>t.status==="Pendente").length;
+  $("#progressCount").textContent = tasks.filter(t=>t.status==="Em andamento").length;
+  $("#waitingCount").textContent = tasks.filter(t=>t.status==="Aguardando retorno").length;
+  $("#lateCount").textContent = tasks.filter(t=>t.date<today && !["Concluída","Cancelada"].includes(t.status)).length;
+}
+
+function taskHTML(t){
+  const done = t.status==="Concluída";
+  const info = [
+    t.time ? `🕒 ${t.time}` : "",
+    t.category ? `📁 ${t.category}` : "",
+    t.patient ? `👤 ${t.patient}` : "",
+    t.professional ? `🩺 ${t.professional}` : "",
+    t.status ? `• ${t.status}` : ""
+  ].filter(Boolean).join(" ");
+  return `<div class="task ${t.priority} ${done?"done":""}">
+    <input type="checkbox" ${done?"checked":""} onchange="toggleTask('${t.id}')">
+    <div>
+      <div class="task-title">${escapeHTML(t.title)}</div>
+      <div class="task-meta">${escapeHTML(info)}</div>
+      ${t.notes ? `<div style="margin-top:8px;font-size:13px">${escapeHTML(t.notes)}</div>`:""}
+    </div>
+    <div class="task-actions">
+      <button class="icon-btn" onclick="editTask('${t.id}')">✎</button>
+    </div>
+  </div>`;
+}
+
+function renderToday(){
+  const key = dateKey(currentDate);
+  const list = filteredTasks().filter(t=>t.date===key).sort((a,b)=>(a.time||"99:99").localeCompare(b.time||"99:99"));
+  $("#todayDateLabel").textContent = formatDate(currentDate);
+  $("#todayTasks").innerHTML = list.length ? list.map(taskHTML).join("") : `<div class="empty">Nenhuma tarefa para este dia.</div>`;
+  const completed = list.filter(t=>t.status==="Concluída").length;
+  const pct = list.length ? Math.round(completed/list.length*100) : 0;
+  $("#dailyProgress").style.width = pct+"%";
+  $("#dailyProgressText").textContent = `${completed} de ${list.length} tarefa(s) concluída(s)`;
+}
+
+function startOfWeek(d){
+  const x = new Date(d);
+  const day = x.getDay();
+  const diff = day===0 ? -6 : 1-day;
+  x.setDate(x.getDate()+diff);
+  x.setHours(0,0,0,0);
+  return x;
+}
+
+function renderWeek(){
+  const start = startOfWeek(currentDate);
+  const names = ["Segunda","Terça","Quarta","Quinta","Sexta","Sábado","Domingo"];
+  let html = "";
+  for(let i=0;i<7;i++){
+    const d = new Date(start); d.setDate(start.getDate()+i);
+    const key = dateKey(d);
+    const list = filteredTasks().filter(t=>t.date===key).sort((a,b)=>(a.time||"99:99").localeCompare(b.time||"99:99"));
+    html += `<div class="day-col ${key===dateKey(new Date())?"today":""}">
+      <div class="day-head">${names[i]}<small>${d.toLocaleDateString("pt-BR")}</small></div>
+      ${list.length ? list.map(t=>`<div class="mini-task ${t.priority}" onclick="editTask('${t.id}')">
+        <strong>${escapeHTML(t.title)}</strong><br><span>${t.time||"Sem horário"} · ${escapeHTML(t.category)}</span>
+      </div>`).join("") : `<div class="empty" style="padding:18px 6px">Sem tarefas</div>`}
+    </div>`;
+  }
+  $("#weekGrid").innerHTML = html;
+}
+
+function renderMonth(){
+  const y = currentDate.getFullYear(), m = currentDate.getMonth();
+  const first = new Date(y,m,1);
+  const start = startOfWeek(first);
+  const heads = ["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"].map(x=>`<div class="month-head">${x}</div>`).join("");
+  let cells = "";
+  for(let i=0;i<42;i++){
+    const d = new Date(start); d.setDate(start.getDate()+i);
+    const key = dateKey(d);
+    const list = filteredTasks().filter(t=>t.date===key).slice(0,3);
+    cells += `<div class="month-day ${d.getMonth()!==m?"muted":""} ${key===dateKey(new Date())?"today":""}">
+      <div class="month-number">${d.getDate()}</div>
+      ${list.map(t=>`<div class="month-item" onclick="editTask('${t.id}')">${escapeHTML(t.title)}</div>`).join("")}
+      ${filteredTasks().filter(t=>t.date===key).length>3?`<small>+ mais</small>`:""}
+    </div>`;
+  }
+  $("#monthGrid").innerHTML = heads + cells;
+}
+
+function render(){
+  stats();
+  renderToday();
+  renderWeek();
+  renderMonth();
+  const labels = {
+    today:["Visão de hoje",formatDate(currentDate)],
+    week:["Visão semanal",`${startOfWeek(currentDate).toLocaleDateString("pt-BR")} a ${(()=>{let e=startOfWeek(currentDate);e.setDate(e.getDate()+6);return e.toLocaleDateString("pt-BR")})()}`],
+    month:["Visão mensal",currentDate.toLocaleDateString("pt-BR",{month:"long",year:"numeric"})]
+  };
+  $("#pageTitle").textContent = labels[currentView][0];
+  $("#pageSubtitle").textContent = labels[currentView][1];
+}
+
+function setView(v){
+  currentView=v;
+  $$(".view").forEach(x=>x.classList.remove("active"));
+  $("#"+v+"View").classList.add("active");
+  $$(".nav button").forEach(x=>x.classList.toggle("active",x.dataset.view===v));
+  render();
+}
+
+function openModal(task=null){
+  $("#taskModal").classList.add("open");
+  $("#modalTitle").textContent = task ? "Editar tarefa" : "Nova tarefa";
+  $("#deleteBtn").style.display = task ? "inline-block" : "none";
+  $("#taskId").value = task?.id || "";
+  $("#title").value = task?.title || "";
+  $("#date").value = task?.date || dateKey(currentDate);
+  $("#time").value = task?.time || "";
+  $("#category").value = task?.category || categories[0];
+  $("#priority").value = task?.priority || "medium";
+  $("#status").value = task?.status || "Pendente";
+  $("#owner").value = task?.owner || "";
+  $("#patient").value = task?.patient || "";
+  $("#professional").value = task?.professional || "";
+  $("#phone").value = task?.phone || "";
+  $("#notes").value = task?.notes || "";
+  setTimeout(()=>$("#title").focus(),50);
+}
+function closeModal(){ $("#taskModal").classList.remove("open"); }
+
+function editTask(id){ openModal(tasks.find(t=>t.id===id)); }
+function toggleTask(id){
+  const t=tasks.find(t=>t.id===id);
+  t.status = t.status==="Concluída" ? "Pendente" : "Concluída";
+  save(); render();
+}
+function deleteTask(){
+  const id=$("#taskId").value;
+  if(id && confirm("Excluir esta tarefa?")){
+    tasks=tasks.filter(t=>t.id!==id); save(); closeModal(); render();
+  }
+}
+function escapeHTML(str=""){
+  return str.replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
+}
+
+$("#taskForm").addEventListener("submit",e=>{
+  e.preventDefault();
+  const id=$("#taskId").value || String(Date.now());
+  const task={
+    id,
+    title:$("#title").value.trim(),
+    date:$("#date").value,
+    time:$("#time").value,
+    category:$("#category").value,
+    priority:$("#priority").value,
+    status:$("#status").value,
+    owner:$("#owner").value.trim(),
+    patient:$("#patient").value.trim(),
+    professional:$("#professional").value.trim(),
+    phone:$("#phone").value.trim(),
+    notes:$("#notes").value.trim()
+  };
+  const ix=tasks.findIndex(t=>t.id===id);
+  if(ix>=0) tasks[ix]=task; else tasks.push(task);
+  save(); closeModal(); render();
+});
+
+$$(".nav button").forEach(b=>b.addEventListener("click",()=>setView(b.dataset.view)));
+["searchInput","categoryFilter","statusFilter","priorityFilter"].forEach(id=>$("#"+id).addEventListener("input",render));
+$("#newTaskBtn").onclick=()=>openModal();
+$("#closeModal").onclick=closeModal;
+$("#cancelBtn").onclick=closeModal;
+$("#deleteBtn").onclick=deleteTask;
+$("#taskModal").addEventListener("click",e=>{if(e.target.id==="taskModal")closeModal()});
+$("#printBtn").onclick=()=>window.print();
+$("#todayBtn").onclick=()=>{currentDate=new Date();render()};
+$("#prevBtn").onclick=()=>{
+  if(currentView==="today") currentDate.setDate(currentDate.getDate()-1);
+  if(currentView==="week") currentDate.setDate(currentDate.getDate()-7);
+  if(currentView==="month") currentDate.setMonth(currentDate.getMonth()-1);
+  render();
+};
+$("#nextBtn").onclick=()=>{
+  if(currentView==="today") currentDate.setDate(currentDate.getDate()+1);
+  if(currentView==="week") currentDate.setDate(currentDate.getDate()+7);
+  if(currentView==="month") currentDate.setMonth(currentDate.getMonth()+1);
+  render();
+};
+$("#themeBtn").onclick=()=>{
+  document.body.classList.toggle("dark");
+  localStorage.setItem("homecareTheme",document.body.classList.contains("dark")?"dark":"light");
+  $("#themeBtn").textContent=document.body.classList.contains("dark")?"Modo claro":"Modo escuro";
+};
+if(localStorage.getItem("homecareTheme")==="dark"){
+  document.body.classList.add("dark");
+  $("#themeBtn").textContent="Modo claro";
+}
+
+$("#backupBtn").onclick=()=>{
+  const blob=new Blob([JSON.stringify(tasks,null,2)],{type:"application/json"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="backup_planner_homecare.json";
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+$("#importInput").addEventListener("change",e=>{
+  const file=e.target.files[0]; if(!file)return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    try{
+      const data=JSON.parse(reader.result);
+      if(!Array.isArray(data)) throw new Error();
+      tasks=data; save(); render(); alert("Backup importado com sucesso.");
+    }catch{ alert("Arquivo de backup inválido."); }
+  };
+  reader.readAsText(file);
+});
+
+// tarefas de exemplo somente no primeiro uso
+if(!localStorage.getItem("homecareInitialized")){
+  const now = new Date();
+  const tomorrow = new Date(now); tomorrow.setDate(now.getDate()+1);
+  tasks = [
+    {id:"1",title:"Confirmar escala do plantão noturno",date:dateKey(now),time:"09:00",category:"Escalas",priority:"high",status:"Pendente",owner:"",patient:"Paciente 014",professional:"",phone:"",notes:"Confirmar disponibilidade dos profissionais."},
+    {id:"2",title:"Solicitar documento pendente",date:dateKey(now),time:"11:00",category:"Documentação",priority:"medium",status:"Aguardando retorno",owner:"",patient:"",professional:"Técnico de enfermagem",phone:"",notes:""},
+    {id:"3",title:"Revisar fechamento de pagamentos",date:dateKey(tomorrow),time:"14:00",category:"Financeiro",priority:"medium",status:"Em andamento",owner:"",patient:"",professional:"",phone:"",notes:""}
+  ];
+  save();
+  localStorage.setItem("homecareInitialized","1");
+}
+render();
+</script>
+</body>
+</html>
