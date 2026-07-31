@@ -415,6 +415,15 @@
           <label>Telefone</label>
           <input class="field" id="phone" placeholder="(81) 99999-9999">
         </div>
+
+        <div class="form-group full">
+          <label>Compartilhamento</label>
+          <select class="field" id="accessLevel">
+            <option value="private">Privada — somente o criador visualiza</option>
+            <option value="view">Compartilhada — outros usuários podem visualizar</option>
+            <option value="edit">Compartilhada — outros usuários podem visualizar e editar</option>
+          </select>
+        </div>
         <div class="form-group full">
           <label>Observações</label>
           <textarea class="field" id="notes" placeholder="Informações administrativas da tarefa"></textarea>
@@ -423,7 +432,7 @@
       <div class="modal-actions">
         <button type="button" class="btn danger" id="deleteBtn" style="display:none">Excluir</button>
         <button type="button" class="btn" id="cancelBtn">Cancelar</button>
-        <button type="submit" class="btn primary">Salvar tarefa</button>
+        <button type="submit" class="btn primary" id="saveTaskBtn">Salvar tarefa</button>
       </div>
     </form>
   </div>
